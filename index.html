@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Datenkommunikation 1 – Lernapp (Textfragen) – 2.2.2 bis 15.2.3</title>
+  <title>Datenkommunikation 1 – Lernapp (Textfragen) – mit Abgleich</title>
   <style>
     :root{
       --bg:#0b1020;
@@ -125,6 +125,21 @@
       outline:none;
     }
     input[type="text"]::placeholder{color:rgba(169,182,230,.65)}
+    textarea{
+      width:100%;
+      min-height:100px;
+      resize:vertical;
+      padding:10px 11px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(9,13,28,.55);
+      color: rgba(232,238,255,.92);
+      outline:none;
+      font-family: var(--mono);
+      font-size:12.5px;
+      line-height:1.45;
+    }
+    textarea::placeholder{color:rgba(169,182,230,.65)}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .row > *{flex:1}
     .btn{
@@ -267,6 +282,13 @@
       background: rgba(0,0,0,.25);
       color: rgba(232,238,255,.92);
     }
+    .compareRow{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:8px;
+    }
   </style>
 </head>
 <body>
@@ -274,10 +296,10 @@
   <div class="wrap">
     <div class="toprow">
       <div>
-        <h1>Datenkommunikation 1 – Lernapp (Textfragen)</h1>
+        <h1>Datenkommunikation 1 – Lernapp (Textfragen) – mit Abgleich</h1>
         <div class="subtitle">
           Enthält nur Aufgaben, die man „normal durch Text beantworten“ kann (Rechen-/Zeichenaufgaben ausgelassen).<br>
-          Modi: <b>Lernen</b> (mit Filter/Suche) und <b>Prüfung</b> (Shuffle, Selbstbewertung, Score).
+          Modi: <b>Lernen</b> (mit Filter/Suche, eigener Antwort + Abgleich) und <b>Prüfung</b> (Shuffle, eigener Antwort + Abgleich, Score).
         </div>
       </div>
       <div class="tabs" role="tablist" aria-label="Modi">
@@ -297,6 +319,7 @@
           <h2>Steuerung</h2>
           <span class="pill" id="countPill">0 Fragen</span>
         </div>
+
         <div class="bd" id="studyControls">
           <label for="search">Suche (Frage/Antwort/ID)</label>
           <input id="search" type="text" placeholder='z. B. "WLAN", "OSI", "Cookies", "IPv6"' />
@@ -346,7 +369,7 @@
           </div>
 
           <div style="margin-top:12px" class="footnote">
-            Ablauf: Frage beantworten → Lösung anzeigen → selbst bewerten (richtig/falsch) → nächste Frage.
+            Ablauf: Frage beantworten → Lösung anzeigen → Abgleich lesen → selbst bewerten (richtig/falsch) → nächste Frage.
           </div>
         </div>
       </section>
@@ -367,7 +390,16 @@
               <div class="examAid" id="examAid">—</div>
               <div class="examQ" id="examQ">Starte eine Prüfung, um zu beginnen.</div>
 
-              <div class="actions">
+              <label style="display:block;font-size:12.5px;color:var(--muted);margin-top:12px;margin-bottom:6px;">
+                Deine Antwort (Prüfungsmodus):
+              </label>
+              <textarea id="examUserAnswer" placeholder="Schreibe deine Antwort hier hinein..."></textarea>
+
+              <div id="examCompareInfo" class="stat" style="margin-top:10px;">
+                Noch nicht abgeglichen.
+              </div>
+
+              <div class="actions" style="margin-top:10px;">
                 <button class="btn" id="examShow">Lösung anzeigen (Space)</button>
                 <button class="btn ok" id="examYes">Richtig (J)</button>
                 <button class="btn bad" id="examNo">Falsch (N)</button>
@@ -385,8 +417,7 @@
 
 <script>
 /**
- * Datenbasis: NUR Textfragen. Lösungen sind 1:1 wie im PDF-Ausschnitt.
- * Hinweis: Rechen-/Zeichenaufgaben sind ausgelassen.
+ * Datenbasis: NUR Textfragen. Rechen-/Zeichenaufgaben sind ausgelassen.
  */
 const QA = [
   // =========================
@@ -428,10 +459,6 @@ const QA = [
     question:"Nennen Sie zwei Aufgaben, deren Lösung leistungsfähige Netzwerkbetriebssysteme über die reine Datenkommunikation hinaus \nanbieten müssen.",
     answer:"Adressierungsdienste\nInformationsdienste, z.B. Authentifikation (Login-Daten bei Server nachfragen), Zeitsynchronisation"
   },
-
-  // =========================
-  // 1.2 OSI-Modell
-  // =========================
   {
     id:"1.2.1",
     block:"1 Einführung und Grundlagen",
@@ -476,7 +503,7 @@ const QA = [
   },
 
   // =========================
-  // 2 Grundlagen der Datenübertragung (nur Textaufgaben)
+  // 2 Grundlagen der Datenübertragung (Text)
   // =========================
   {
     id:"2.1.1",
@@ -511,14 +538,13 @@ const QA = [
   {
     id:"2.2.2",
     block:"2 Grundlagen der Datenübertragung",
-    question:"Definieren Sie die Begriffe Latenz, Signallaufzeit, Übertragungszeit und Round-Trip-Time!",
-    answer:"Latenz: (bis Datenblock vollständig vom Sender zum Empfänger übertragen wurde)\ntL = ts + tü + tw\nSignallaufzeit:\nt\ns=\nl\nva\n(Zeit, wie lange ein kurzer Spannungsimpuls von Sender zu Empfänger braucht)\n(l: Kabellänge va: Ausbreitungsgeschwindigkeit)\nÜbertragungszeit:\nt\nü=\nn\nDü\n(Zeit er Übertragung vom Beginn des ersten Bits bis zum Ende des letzten Bits)\nRound-Trip-Time:\ntRT = 2 · tL"
+    question:"Definieren Sie Latenz, Signallaufzeit und Übertragungszeit.",
+    answer:"Latenz: (bis Datenblock vollständig vom Sender zum Empfänger übertragen wurde)\ntL = ts + tü + tw\nSignallaufzeit:\nts = l/va\n(Zeit, wie lange ein kurzer Spannungsimpuls von Sender zu Empfänger braucht)\n(l: Kabellänge va: Ausbreitungsgeschwindigkeit)\nÜbertragungszeit:\ntü = n/Dü\n(Zeit er Übertragung vom Beginn des ersten Bits bis zum Ende des letzten Bits)\nRound-Trip-Time:\ntRT = 2"
   },
 
   // =========================
-  // 3 Übertragungsverfahren und -medien (nur Textaufgaben)
+  // 3 Übertragungsverfahren und -medien (Text)
   // =========================
-  // 3.1.1 ist Zeichnen → ausgelassen
   {
     id:"3.1.2",
     block:"3 Übertragungsverfahren und -medien",
@@ -526,525 +552,377 @@ const QA = [
     answer:"NRZ Manchester\nKein Gleichanteil X √\nErkennung einfacher Fehler X √\nTaktrückgewinnung\n(oder Taktsynchronisation)\nX √\n(Nachteil: doppelter Bandbreitenbedarf wegen Signalwechsel)"
   },
   {
-    id:"3.1.2",
-    block:"3 Übertragungsverfahren und -medien",
-    question:"Wo liegen die Vorteile der Manchester-Kodierung im Vergleich zur NRZ-Kodierung?",
-    answer:`NRZ Manchester
-Kein Gleichanteil X √
-Erkennung einfacher Fehler X √
-Taktrückgewinnung
-(oder Taktsynchronisation)
-X √
-(Nachteil: doppelter Bandbreitenbedarf wegen Signalwechsel)`
-  },
-  {
     id:"3.2.1",
     block:"3 Übertragungsverfahren und -medien",
     question:"Erklären Sie den Unterschied zwischen synchronem und asynchronem Zeitmultiplexing!",
-    answer:`Synchrones Zeitmultiplexing:
-feste Zeitscheiben bzw. Takt der Zeitscheiben definiert
-Asynchrones Zeitmultiplexing: Adressen`
+    answer:"Synchrones Zeitmultiplexing:\nfeste Zeitscheiben bzw. Takt der Zeitscheiben definiert\nAsynchrones Zeitmultiplexing: Adressen"
   },
   {
     id:"3.3.1",
     block:"3 Übertragungsverfahren und -medien",
     question:"Vergleichen Sie unterschiedliche Glasfasertypen bzw. Lichtwellenleiter!",
-    answer:`Multimode-Stufenfaser Multimode-Gradientenfaser Monomodefaser
-Bandbreiten-Längen-Produkt Gering: 100 MHz km Mittel: 1 GHz km Hoch: 10 GHz km
-Reichweiten Gering Mittel Hoch
-Dämpfung Hoch Mittel Gering`
+    answer:"Multimode-Stufenfaser Multimode-Gradientenfaser Monomodefaser\nBandbreiten-Längen-Produkt Gering: 100 MHz km Mittel: 1 GHz km Hoch: 10 GHz km\nReichweiten Gering Mittel Hoch\nDämpfung Hoch Mittel Gering"
   },
 
-  // 6.1 LAN
+  // =========================
+  // 6 LANs und Zugriffsverfahren (Text)
+  // =========================
   {
     id:"6.1.1",
     block:"6 LANs und Zugriffsverfahren",
     question:"Nennen Sie 3 typische, wesentliche Eigenschaften eines LANs!",
-    answer:`Kurze Entfernung! → geringe Dämpfung → störsicher
-→ Bandbreiten-Längen-Produkt → hohes Dü,max (hohe Bandbreite!)
-→ kostengünstig!
-→ kleine Latenz!
-volle Admin-Hoheit`
+    answer:"Kurze Entfernung! → geringe Dämpfung → störsicher\n→ Bandbreiten-Längen-Produkt → hohes Dü,max (hohe Bandbreite!)\n→ kostengünstig!\n→ kleine Latenz!\nvolle Admin-Hoheit"
   },
   {
     id:"6.1.2",
     block:"6 LANs und Zugriffsverfahren",
     question:"Welche 3 Zugriffssteuerungsverfahren kennen Sie und wie lassen diese sich klassifizieren?",
-    answer:`TDMA, koordiniert
-Token, koordiniert
-ALOHA, wahlfrei (wahlfrei: jeder kann senden wann er will)
-CSMA/CD, wahlfrei`
+    answer:"TDMA, koordiniert\nToken, koordiniert\nALOHA, wahlfrei (wahlfrei: jeder kann senden wann er will)\nCSMA/CD, wahlfrei"
   },
   {
     id:"6.1.3",
     block:"6 LANs und Zugriffsverfahren",
     question:"Beschreiben Sie das CSMA-Verfahren zur Zugriffssteuerung!",
-    answer:`1. Verfahren: 0-persistent: kurz vor Senden abhören und wenn Kanal frei senden
-2. Verfahren: 1-persistent CSMA: Dauerhaftes Abhören, wenn Kanal belegt,
- wenn frei → senden
-Kollision: Zufallszeit warten + neuer Versuch`
+    answer:"1. Verfahren: 0-persistent: kurz vor Senden abhören und wenn Kanal frei senden\n2. Verfahren: 1-persistent CSMA: Dauerhaftes Abhören, wenn Kanal belegt,\n wenn frei → senden\nKollision: Zufallszeit warten + neuer Versuch"
   },
-
-  // 6.4 / 6.5 WLAN (nur Text)
   {
     id:"6.4.1",
     block:"6 LANs und Zugriffsverfahren",
     question:"Wie hoch ist die Schrittgeschwindigkeit (Anzahl Signaländerungen pro Bit) eines IEEE 802.3-LANs mit 10 Mbit/s?",
-    answer:`Breitbandverfahren: Modulation
-Basisbandverfahren: Leitungskodierung → Manchesterkodierung
-Dü=10 M bit
-s
-vs=
-2 Schritte
-bit ⋅Dü=2⋅
-1
-bit⋅10 M bit
-s
-=20 M
-1
-s
-=20 M baud (2 Schritte bzw. 2 Pegel pro Bit)`
+    answer:"Breitbandverfahren: Modulation\nBasisbandverfahren: Leitungskodierung → Manchesterkodierung\nDü=10 M bit\ns\nvs=\n2 Schritte\nbit ⋅Dü=2⋅\n1\nbit⋅10 M bit\ns\n=20 M\n1\ns\n=20 M baud (2 Schritte bzw. 2 Pegel pro Bit)"
   },
   {
     id:"6.5.1",
     block:"6 LANs und Zugriffsverfahren",
     question:"Worin unterscheiden sich die WLAN-Standards?",
-    answer:`Frequenzbereich (2,4 GHz, 5 GHz), Dü,max (→ kleine Latenz),
-Modulationsverfahren (QAM (Quadratur Amplituden Modulation, gehört zu OSI 1), OFDM),
-MIMO (Multiple Input, Multiple Output, mehrere Antennen),...`
+    answer:"Frequenzbereich (2,4 GHz, 5 GHz), Dü,max (→ kleine Latenz),\nModulationsverfahren (QAM (Quadratur Amplituden Modulation, gehört zu OSI 1), OFDM),\nMIMO (Multiple Input, Multiple Output, mehrere Antennen),..."
   },
   {
     id:"6.5.2",
     block:"6 LANs und Zugriffsverfahren",
     question:"Welcher Frequenzbereich wird von WLAN verwendet?",
-    answer:`2,4 GHz, 5 GHz`
+    answer:"2,4 GHz, 5 GHz"
   },
   {
     id:"6.5.3",
     block:"6 LANs und Zugriffsverfahren",
     question:"Können zwei Access Points räumlich überlappend störungsfrei auf dem gleichen Kanal arbeiten?",
-    answer:`arbeiten: ja störungsfrei: nein`
+    answer:"arbeiten: ja störungsfrei: nein"
   },
   {
     id:"6.5.4",
     block:"6 LANs und Zugriffsverfahren",
     question:"Welche Modulationsverfahren werden von WLAN verwendet?",
-    answer:`QAM (Quadrature Amplitude Modulation),
-OFDM (Orthogonal Frequency-Division Multiplexing/Orthogonales Frequenzmultiplexverfahren, bessere Bandbreitenausnutzung)`
+    answer:"QAM (Quadrature Amplitude Modulation),\nOFDM (Orthogonal Frequency-Division Multiplexing/Orthogonales Frequenzmultiplexverfahren, bessere Bandbreitenausnutzung)"
   },
   {
     id:"6.5.5",
     block:"6 LANs und Zugriffsverfahren",
     question:"Welches Zugriffsverfahren wird von WLAN verwendet und wie funktioniert es?",
-    answer:`CSMA/CA (Carrier Sense Multiple Access Collision Avoidance)
-1. CSMA (nicht in laufende Sendung funken d.h. stören)
-2. Reservierung mit Rückbestätigung vor der Sendung
-3. Sendung
-4. Bestätigung`
+    answer:"CSMA/CA (Carrier Sense Multiple Access Collision Avoidance)\n1. CSMA (nicht in laufende Sendung funken d.h. stören)\n2. Reservierung mit Rückbestätigung vor der Sendung\n3. Sendung\n4. Bestätigung"
   },
   {
     id:"6.5.7",
     block:"6 LANs und Zugriffsverfahren",
     question:"Welche Sicherheitsmechanismen können im WLAN verwendet werden?",
-    answer:`Keine,
-WEP, WPA, WPA2, WPA3 → Verschlüsselung
-MAC-Adressen-Filterung`
+    answer:"Keine,\nWEP, WPA, WPA2, WPA3 → Verschlüsselung\nMAC-Adressen-Filterung"
   },
   {
     id:"6.5.8",
     block:"6 LANs und Zugriffsverfahren",
     question:"Was passiert, wenn Bluetooth und WLAN gleichzeitig am gleichen Ort eingesetzt werden?",
-    answer:`Arbeiten beide? → ja
-BT→ Frequenzhopping → "hüpft" im WLAN herum
-BT merkt, wenn im entsprechenden Frequenzband gesendet wird
-(BT verwendet einzelne 79 Basiskanäle direkt, während WLAN einige Basiskanäle koppelt)`
+    answer:"Arbeiten beide? → ja\nBT→ Frequenzhopping → \"hüpft\" im WLAN herum\nBT merkt, wenn im entsprechenden Frequenzband gesendet wird\n(BT verwendet einzelne 79 Basiskanäle direkt, während WLAN einige Basiskanäle koppelt)"
   },
 
-  // 7 Hubs / Bridges / Switches
+  // =========================
+  // 7 Kopplung von LANs (Text)
+  // =========================
   {
     id:"7.1.1",
     block:"7 Kopplung von LANs",
     question:"Was ist der Zweck von Hubs? Auf welcher OSI-Schicht arbeitet ein Hub?",
-    answer:`Kopplung von LANs: Verteilung von Signalen
-→ OSI-Schicht 1 → Gesamte Kollisionsdomäne
-(Zweck: Verstärken von Signalen + Weiterleiten an alle Anschlüsse)`
+    answer:"Kopplung von LANs: Verteilung von Signalen\n→ OSI-Schicht 1 → Gesamte Kollisionsdomäne\n(Zweck: Verstärken von Signalen + Weiterleiten an alle Anschlüsse)"
   },
   {
     id:"7.1.2",
     block:"7 Kopplung von LANs",
     question:"Was sind die Vor- und Nachteile von Hubs gegenüber anderen Netzelementen zur Kopplung von LANs?",
-    answer:`Nachteile: Gesamtes Netz ist Kollisionsdomäne
-→ Weniger Datendurchsatz
-→ Mögliches Sicherheitsproblem: Abhören
-Vorteile: kostengünstig
-Einfache Inbetriebnahme
-kleine Latenz
-gleichzeitiges Abhören aller Signale (aller Hardware-Ports bzw. eines beliebigen Hardware-Ports → leichte Fehlersuche möglich)`
+    answer:"Nachteile: Gesamtes Netz ist Kollisionsdomäne\n→ Weniger Datendurchsatz\n→ Mögliches Sicherheitsproblem: Abhören\nVorteile: kostengünstig\nEinfache Inbetriebnahme\nkleine Latenz\ngleichzeitiges Abhören aller Signale (aller Hardware-Ports bzw. eines beliebigen Hardware-Ports → leichte Fehlersuche möglich)"
   },
   {
     id:"7.2.1",
     block:"7 Kopplung von LANs",
     question:"Auf welcher OSI-Schicht arbeitet eine Bridge? Wie ermöglichen transparente Brücken eine korrekte Filterung der MAC-Adressen?",
-    answer:`OSI-Schicht 2 (immer die höchste Schicht nennen)
-Wie ermöglichen transparente Brücken eine korrekte Filterung der MAC-Adressen?
-Backward-Learning:
-Abhören der Quell-MAC-Adressen ↔(zuordnen zu) Hardware-Ports
-→ Aufbau einer Tabelle`
+    answer:"OSI-Schicht 2 (immer die höchste Schicht nennen)\nWie ermöglichen transparente Brücken eine korrekte Filterung der MAC-Adressen?\nBackward-Learning:\nAbhören der Quell-MAC-Adressen ↔(zuordnen zu) Hardware-Ports\n→ Aufbau einer Tabelle"
   },
   {
     id:"7.2.2",
     block:"7 Kopplung von LANs",
     question:"Ein Unternehmen betreibt 3 Ethernet-Segmente, die über zwei Brücken in einem linearen Netz verbunden sind. Als der Netzwerkverwalter kündigt, wird er hastig durch einen Token-Ring-Spezialisten ersetzt, der sofort durch eine weitere transparente Brücke die beiden Enden des Netzes verbindet. Was passiert in der beschriebenen Konfiguration?",
-    answer:`(Kleine Kreise in Abbildung: Maschinen)
-→ nicht zyklenfrei
-→ "kreisende" Rahmen
-→ Problem! → Spanning-Tree-Verfahren => jedes LAN-Segment wird nur von einer Brücke versorgt
- Spanning-Tree-Verfahren → überflüssige Brücken werden vom Nutzdatenverkehr abgeschaltet
-( → Baum ohne Schleifen)
-1 LAN-Segment wird immer nur durch eine Brücke versorgt → kein Kreisen von Daten mehr
-Brücke mit kleinster Kennung hat Priorität
-→ B1 ist Wurzelbrücke
-B2 und B3 sind jeweils 1 LAN-Segment von Wurzelbrücke B1 entfernt
-→ L3 wird durch B2 versorgt, wegen kleinerer Kennung bei gleicher Entfernung zur Wurzelbrücke
-B1 versorgt L1 und L2, B2 versorgt L3 und B3 versorgt nichts
-Vorteil dieser Verschaltung: Redundanz, Absicherung gegen Ausfall`
+    answer:"(Kleine Kreise in Abbildung: Maschinen)\n→ nicht zyklenfrei\n→ \"kreisende\" Rahmen\n→ Problem! → Spanning-Tree-Verfahren => jedes LAN-Segment wird nur von einer Brücke versorgt\n Spanning-Tree-Verfahren → überflüssige Brücken werden vom Nutzdatenverkehr abgeschaltet\n( → Baum ohne Schleifen)\n1 LAN-Segment wird immer nur durch eine Brücke versorgt → kein Kreisen von Daten mehr\nBrücke mit kleinster Kennung hat Priorität\n→ B1 ist Wurzelbrücke\nB2 und B3 sind jeweils 1 LAN-Segment von Wurzelbrücke B1 entfernt\n→ L3 wird durch B2 versorgt, wegen kleinerer Kennung bei gleicher Entfernung zur Wurzelbrücke\nB1 versorgt L1 und L2, B2 versorgt L3 und B3 versorgt nichts\nVorteil dieser Verschaltung: Redundanz, Absicherung gegen Ausfall"
   },
   {
     id:"7.3.1",
     block:"7 Kopplung von LANs",
     question:"Was bedeutet der Backplane-Durchsatz eines Switches? Wie groß ist dieser im Idealfall?",
-    answer:`Gesamtdurchsatz aller parallel laufenden Datenströme F230
-Wie groß ist dieser im Idealfall?
-Anzahl der HW-Ports *2 (Idealfall; Senden + Empfangen) * Dü,max,Einzel`
+    answer:"Gesamtdurchsatz aller parallel laufenden Datenströme F230\nWie groß ist dieser im Idealfall?\nAnzahl der HW-Ports *2 (Idealfall; Senden + Empfangen) * Dü,max,Einzel"
   },
   {
     id:"7.3.2",
     block:"7 Kopplung von LANs",
     question:"Wieso besitzt ein managebarer Switch, wie dieser in der Vorlesung vorgestellt wird, eine eigene MAC-Adresse?",
-    answer:`(MAC-Adresse für Konfiguration von Webserver, Konfiguration wird dann auf Switch angewendet)`
+    answer:"(MAC-Adresse für Konfiguration von Webserver, Konfiguration wird dann auf Switch angewendet)"
   },
   {
     id:"7.3.3",
     block:"7 Kopplung von LANs",
     question:"Durch welchen Mechanismus / Konfiguration kann ein Switch wie ein Hub oder Splitter eingesetzt werden?",
-    answer:`Port Mirroring`
+    answer:"Port Mirroring"
   },
 
-  // 8 Routing (nur Text)
+  // =========================
+  // 8 Routing (Text)
+  // =========================
   {
     id:"8.1.5",
     block:"8 Routing",
     question:"Nennen Sie ein Routing-Protokoll, dass das Distanzvektor-Routing verwendet!",
-    answer:`Routing Information Protocol (RIP)`
+    answer:"Routing Information Protocol (RIP)"
   },
 
+  // =========================
   // 9 Überlastkontrolle (Text)
+  // =========================
   {
     id:"9.1.1",
     block:"9 Überlastkontrolle",
     question:"Welche Verfahrensklassen zur Überlastkontrolle auf der OSI-Schicht 3 gibt es?",
-    answer:`Open Loop, Closed Loop F273
-Hostbasiert, Routerbasiert`
+    answer:"Open Loop, Closed Loop F273\nHostbasiert, Routerbasiert"
   },
   {
     id:"9.1.2",
     block:"9 Überlastkontrolle",
     question:"Charakterisieren Sie Traffic Shaping!",
-    answer:`Open Loop (Router bekommt keine Rückkopplung)
-Host- & Routerbasiert
-(vorwiegend)`
+    answer:"Open Loop (Router bekommt keine Rückkopplung)\nHost- & Routerbasiert\n(vorwiegend)"
   },
 
-  // 10 Internet Protocol (Textteile)
+  // =========================
+  // 10 Internet Protocol (Text)
+  // =========================
   {
     id:"10.1.1",
     block:"10 Internet Protocol",
     question:"Zu welchem Routing-Typ gehört CIDR?",
-    answer:`Hierarchisches Routing F267
-Hierarchisches Routing → Routing-Tabellen mit übergeordneten Netzen
-Weitere Routingverfahren: Backward-Learning Distanzvektor-Routing Flooding`
+    answer:"Hierarchisches Routing F267\nHierarchisches Routing → Routing-Tabellen mit übergeordneten Netzen\nWeitere Routingverfahren: Backward-Learning Distanzvektor-Routing Flooding"
   },
   {
     id:"10.1.2",
     block:"10 Internet Protocol",
     question:"Welche Möglichkeit sollten Sie mit der Netzwerk-Administration in London diskutieren?",
-    answer:`Empfehlung: Mengengerüst zu klein?, 4 C-Klasse-Netze als Minimum (2n
-)`
+    answer:"Empfehlung: Mengengerüst zu klein?, 4 C-Klasse-Netze als Minimum (2n\n)"
   },
   {
     id:"10.2.1",
     block:"10 Internet Protocol",
     question:"Nennen Sie 4 wichtige Bestandteile eines Routingseintrages in einer Routing-Tabelle.",
-    answer:`Destination Network Address Ziel-Netzwerkadresse
-Subnet Mask Subnetzmaske
-Next Hop Nächster Router
-Network Device Netzwerkkarte /Schnittstelle als IP-Adresse`
+    answer:"Destination Network Address Ziel-Netzwerkadresse\nSubnet Mask Subnetzmaske\nNext Hop Nächster Router\nNetwork Device Netzwerkkarte /Schnittstelle als IP-Adresse"
   },
   {
     id:"10.2.3",
     block:"10 Internet Protocol",
     question:"Erläutern Sie die Wirkung der obigen Tabelle auf das IP-Routing.",
-    answer:`Routing über Schnittstelle: 192.168.1.2 → 192.168.0.0/24, 192.168.1.0/24
-192.168.2.1 → 192.168.2.0/24
-Routing nach 192.168.0.0 ist indirekt über Router 192.168.1.1
-192.168.1.1 ist der Default Router für Internet`
+    answer:"Routing über Schnittstelle: 192.168.1.2 → 192.168.0.0/24, 192.168.1.0/24\n192.168.2.1 → 192.168.2.0/24\nRouting nach 192.168.0.0 ist indirekt über Router 192.168.1.1\n192.168.1.1 ist der Default Router für Internet"
   },
   {
     id:"10.3.1",
     block:"10 Internet Protocol",
     question:"Nennen Sie 3 wichtige Unterschiede zwischen IPv4 und IPv6.",
-    answer:`IPv6:
-Adressumfang ist wesentlich größer Notation in Hex statt Dezimal
-einfacherer Header → erweiterbar
-nur Classless Interdomain Routing, keine A- ,B- , C-Klassen (nur noch Sunetzmaske)
-Bessere QoS-Unterstützung
-Multihoming (mehrere IP-Adressen für 1 Maschine für verschiedene Dienste möglich), Autokonfiguration möglich`
+    answer:"IPv6:\nAdressumfang ist wesentlich größer Notation in Hex statt Dezimal\neinfacherer Header → erweiterbar\nnur Classless Interdomain Routing, keine A- ,B- , C-Klassen (nur noch Sunetzmaske)\nBessere QoS-Unterstützung\nMultihoming (mehrere IP-Adressen für 1 Maschine für verschiedene Dienste möglich), Autokonfiguration möglich"
   },
   {
     id:"10.3.3",
     block:"10 Internet Protocol",
     question:"Welche Maßnahmen bietet IPv6 zur Wahrung der Privatsphäre?",
-    answer:`Privacy Extension: Zweite IPv6-Adresse → dynamisch (Änderung z.B. alle 24 h)`
+    answer:"Privacy Extension: Zweite IPv6-Adresse → dynamisch (Änderung z.B. alle 24 h)"
   },
 
-  // 11 Transportprotokolle
+  // =========================
+  // 11 Transportprotokolle (Text)
+  // =========================
   {
     id:"11.1.2",
     block:"11 Transportprotokolle",
     question:"In welcher Reihenfolge werden die einzelnen Kommunikationsschritte durchgeführt?",
-    answer:`F343
-s.o. in 3 Phasen:
-1,2,3,(4) 5 6
-Phase 1 Phase 2 Phase 3
-Phase1: Verbindungsaufbau, erst Server dann Client,
-Phase2: Nutzdatenphase, Datenaustausch
-Phase3: Verbindungsabbau`
+    answer:"F343\ns.o. in 3 Phasen:\n1,2,3,(4) 5 6\nPhase 1 Phase 2 Phase 3\nPhase1: Verbindungsaufbau, erst Server dann Client,\nPhase2: Nutzdatenphase, Datenaustausch\nPhase3: Verbindungsabbau"
   },
   {
     id:"11.1.3",
     block:"11 Transportprotokolle",
     question:"Welche Kommunikationsschritte gehören zu welchem Zustand einer verbindungsorientierten Client-Server-Kommunikation?",
-    answer:`F343
-Verbindungsaufbau: Server öffnet passiv Socket, wartet
-Client öffnet aktiv Socket, kontaktiert Server
-Datenaustausch: gegenseitiges Senden und Empfangen (von Nutzdaten)
-Verbindungsabbau: Sockets schließen`
+    answer:"F343\nVerbindungsaufbau: Server öffnet passiv Socket, wartet\nClient öffnet aktiv Socket, kontaktiert Server\nDatenaustausch: gegenseitiges Senden und Empfangen (von Nutzdaten)\nVerbindungsabbau: Sockets schließen"
   },
   {
     id:"11.1.4",
     block:"11 Transportprotokolle",
     question:"Welches sind die zugehörigen Bibliotheksfunktionen für die Client-Server-Kommunikation in der Programmiersprache C unter Unix?",
-    answer:`F344
-(mindestens 3 kennen: socket(), send(), recv() )`
+    answer:"F344\n(mindestens 3 kennen: socket(), send(), recv() )"
   },
   {
     id:"11.2.1",
     block:"11 Transportprotokolle",
     question:"Was sind die Vor- und Nachteile von UDP und TCP im direkten Vergleich zueinander?",
-    answer:`UDP: verbindungslos → leichtgewichtig (wenig Daten), schnell, (kein Verbindungsaufbau)
-TCP: verbindungsorientiert → gesicherte Übertragung, Reihenfolge korrekt, vollständig, bestätigt
-"langsam" für kleine Datenmengen
-→ große Datenmengen`
+    answer:"UDP: verbindungslos → leichtgewichtig (wenig Daten), schnell, (kein Verbindungsaufbau)\nTCP: verbindungsorientiert → gesicherte Übertragung, Reihenfolge korrekt, vollständig, bestätigt\n\"langsam\" für kleine Datenmengen\n→ große Datenmengen"
   },
   {
     id:"11.2.2",
     block:"11 Transportprotokolle",
     question:"Wozu dient die MSS? (optimale Datenmenge, die verschickt werden soll)",
-    answer:`MSS beachten, sonst Fragmentierung
-→ voll ausschöpfen, sonst großer Overhead in Relation`
+    answer:"MSS beachten, sonst Fragmentierung\n→ voll ausschöpfen, sonst großer Overhead in Relation"
   },
   {
     id:"11.2.3",
     block:"11 Transportprotokolle",
     question:"Wie funktioniert die Überlastkontrolle bei TCP? F370",
-    answer:`Slow-Start und AIMD (additiv increase multiple decrease)
-definiert wird dadurch die Anzahl der unbestätigten Segmente
-(Text reicht)`
+    answer:"Slow-Start und AIMD (additiv increase multiple decrease)\ndefiniert wird dadurch die Anzahl der unbestätigten Segmente\n(Text reicht)"
   },
 
-  // 12 Anwendungsprotokolle
+  // =========================
+  // 12 Anwendungsprotokolle (Text)
+  // =========================
   {
     id:"12.1.1",
     block:"12 Anwendungsprotokolle",
     question:"Wie sieht beispielhaft eine HTTP-Anfrage (Request) aus?",
-    answer:`HTTP-Request (OSI-Schicht 7)
-kleinste URL: /
-Kurzform: Get˽/˽HTTP/1.0 CR LF CR LF`
+    answer:"HTTP-Request (OSI-Schicht 7)\nkleinste URL: /\nKurzform: Get˽/˽HTTP/1.0 CR LF CR LF"
   },
   {
     id:"12.1.3",
     block:"12 Anwendungsprotokolle",
     question:"Wie sind zwei aufeinanderfolgende HTTP-Requests auf HTTP-Ebene verknüpft?",
-    answer:`keine Verknüpfung auf HTTP-Ebene`
+    answer:"keine Verknüpfung auf HTTP-Ebene"
   },
   {
     id:"12.1.4",
     block:"12 Anwendungsprotokolle",
     question:"Wie lassen sich zwei beliebige HTTP-Requests verknüpfen?",
-    answer:`Information auf Anwendungsebene: URL-Rewriting (individualisierte URL mit bestimmter Zahl)
-Cookies
-...`
+    answer:"Information auf Anwendungsebene: URL-Rewriting (individualisierte URL mit bestimmter Zahl)\nCookies\n..."
   },
-
-  // 12.2 E-Mail (12.2.1 ist im Auszug ohne Lösung, daher nicht enthalten)
   {
     id:"12.2.2",
     block:"12 Anwendungsprotokolle",
     question:"Wie werden E-Mails geroutet? Welche Datei konfiguriert das E-Mail-Routing?",
-    answer:`Von E-Mail-Servern wird die E-Mail gezielt an andere E-Mail-Server weitergesendet. Dies muss nicht direkt der Ziel-E-Mail-Server sein.
-(Eigene Routingtabellen für Emailversand (entspricht nicht IP-Routing) )
-Welche Datei konfiguriert das E-Mail-Routing?
-sendmail.conf konfigurieren`
+    answer:"Von E-Mail-Servern wird die E-Mail gezielt an andere E-Mail-Server weitergesendet. Dies muss nicht direkt der Ziel-E-Mail-Server sein.\n(Eigene Routingtabellen für Emailversand (entspricht nicht IP-Routing) )\nWelche Datei konfiguriert das E-Mail-Routing?\nsendmail.conf konfigurieren"
   },
   {
     id:"12.2.3",
     block:"12 Anwendungsprotokolle",
     question:"Welche Möglichkeiten gibt es zum Empfang von E-Mails?",
-    answer:`PoP3: Herunterladen der E-Mails komplett
-IMAPv4: E-Mail-Server wie E-Mail-Datenbank`
+    answer:"PoP3: Herunterladen der E-Mails komplett\nIMAPv4: E-Mail-Server wie E-Mail-Datenbank"
   },
   {
     id:"12.2.4",
     block:"12 Anwendungsprotokolle",
     question:"Kann ermittelt werden, ob ein bestimmter User auf einem E-Mail-Server einen Account hat?",
-    answer:`Ja (wenn nicht Abfrage gesperrt ist)`
+    answer:"Ja (wenn nicht Abfrage gesperrt ist)"
   },
   {
     id:"12.2.5",
     block:"12 Anwendungsprotokolle",
     question:"Nennen Sie einen Mechanismus zur Minimierung von Spam-E-Mails.",
-    answer:`Blacklisting/Sperrliste von Absendern`
+    answer:"Blacklisting/Sperrliste von Absendern"
   },
-
-  // 12.3 FTP
   {
     id:"12.3.1",
     block:"12 Anwendungsprotokolle",
     question:"Wie sieht die Kommunikationsstruktur von FTP aus?",
-    answer:`Aktives FTP:
-1. FTP-Client initiiert TCP-Verbindung (Steuerkanal) auf Server-Port 21
-2. FTP-Server initiiert TCP-Verbindung (Datenkanal) von Server-Port 20 auf signalisiertem Client-Port
-(Passiv: Client initiiert beide Verbindungen
-Grund: Firewall: Verbindungen nur von innen nach außen erlaubt)`
+    answer:"Aktives FTP:\n1. FTP-Client initiiert TCP-Verbindung (Steuerkanal) auf Server-Port 21\n2. FTP-Server initiiert TCP-Verbindung (Datenkanal) von Server-Port 20 auf signalisiertem Client-Port\n(Passiv: Client initiiert beide Verbindungen\nGrund: Firewall: Verbindungen nur von innen nach außen erlaubt)"
   },
   {
     id:"12.3.2",
     block:"12 Anwendungsprotokolle",
     question:"Was der Vorteil einer Out-of-Band-Control (OOB)?",
-    answer:`Keine Vermischung von Steuerdaten und Nutzdaten auf dem gleichen, logischen Kanal`
+    answer:"Keine Vermischung von Steuerdaten und Nutzdaten auf dem gleichen, logischen Kanal"
   },
   {
     id:"12.3.3",
     block:"12 Anwendungsprotokolle",
     question:"Welcher OSI-Schicht ist der ASCII- oder BINARY-Mode von FTP zuzuordnen? Was bewirkt dieser?",
-    answer:`OSI-Schicht 6 (Darstellungsschicht)
-Was bewirkt dieser?
-Gleiche Darstellung auf verschiedenen Plattformen
-→ Nutzdaten werden entsprechend durch FTP geändert!`
+    answer:"OSI-Schicht 6 (Darstellungsschicht)\nWas bewirkt dieser?\nGleiche Darstellung auf verschiedenen Plattformen\n→ Nutzdaten werden entsprechend durch FTP geändert!"
   },
 
-  // 13 Netzstrukturen
+  // =========================
+  // 13 Netzstrukturen und Informationssysteme (Text)
+  // =========================
   {
     id:"13.1.2",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Durch welche Komponenten und Maßnahmen garantiert eine Web-Architektur Anforderungen wie Skalierbarbeit, Sicherheit und Benutzbarkeit?",
-    answer:`Anforderung Maßnahme
-Skalierbarkeit Komponenten sind vervielfachbar
-Webserver partitionieren → aufteilen in Teilbereiche
-Reserven: "gute" Kabel, …
-Upgrade von Netzwerkschnittstelle
-Sicherheit Firewalls
-Benutzerauthentifizierung
-Admin-Passwörter (Sonderzeichen etc vorschreiben)
-Organisatorische Sicherheit → Schulung
-Benutzbarkeit End-Geräteunabhängigkeit MVC-Konzept
-Model View Controler (Konfig-Datei auf Smartphones für Darstellung)
-Mehrsprachigkeit
-User-Help-Desk
-Ergonomische Reaktionszeiten (leistungsfähige Systeme)
-einfaches/übersichtliches Programmierdesign
-Übersichtliches Web-Design`
+    answer:"Anforderung Maßnahme\nSkalierbarkeit Komponenten sind vervielfachbar\nWebserver partitionieren → aufteilen in Teilbereiche\nReserven: \"gute\" Kabel, …\nUpgrade von Netzwerkschnittstelle\nSicherheit Firewalls\nBenutzerauthentifizierung\nAdmin-Passwörter (Sonderzeichen etc vorschreiben)\nOrganisatorische Sicherheit → Schulung\nBenutzbarkeit End-Geräteunabhängigkeit MVC-Konzept\nModel View Controler (Konfig-Datei auf Smartphones für Darstellung)\nMehrsprachigkeit\nUser-Help-Desk\nErgonomische Reaktionszeiten (leistungsfähige Systeme)\neinfaches/übersichtliches Programmierdesign\nÜbersichtliches Web-Design"
   },
   {
     id:"13.2.1",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Aus welchen Komponenten besteht die XAMPP-Suite?",
-    answer:`(A: Apache-Webserver M: Mysql-DB Sammlung von Programmen)
-Apache-Webserver
-MySQL-DB
-Tomcat-Applicationserver`
+    answer:"(A: Apache-Webserver M: Mysql-DB Sammlung von Programmen)\nApache-Webserver\nMySQL-DB\nTomcat-Applicationserver"
   },
   {
     id:"13.2.2",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Welche Probleme, die durch die Verwendung des HTTP entstehen, muss eine Web-Architektur beim Einsatz eines Warenkorbs und eines Bezahlvorganges lösen?",
-    answer:`1) Unverschlüsselte Übertragung: Sicherheit, Datenintegrität (besser https → verschlüsselt)
-2) Gedächtnisloses Protokoll: Authentifizierung der 2. Anfrage, Verknüpfung der Daten der 1. und 2. Anfrage`
+    answer:"1) Unverschlüsselte Übertragung: Sicherheit, Datenintegrität (besser https → verschlüsselt)\n2) Gedächtnisloses Protokoll: Authentifizierung der 2. Anfrage, Verknüpfung der Daten der 1. und 2. Anfrage"
   },
   {
     id:"13.2.3",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Welche Möglichkeiten bietet die XAMPP-Suite für die Einführung von Sessions und die effiziente Nutzung von Datenbankverbindungen an?",
-    answer:`Sessions: Cookies, URL-Rewriting (Tomcat → Sessions einstellen)
-für effiziente Nutzung Datenbankverbindungen: Connection-Pooling`
+    answer:"Sessions: Cookies, URL-Rewriting (Tomcat → Sessions einstellen)\nfür effiziente Nutzung Datenbankverbindungen: Connection-Pooling"
   },
   {
     id:"13.3.1",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Wie sieht die typische Netzstruktur eines Internet Service Providers (ISP) oder eines Großunternehmens aus?",
-    answer:`(IP4-Paket → in IP6-Paket verpacken)
-(Vom ISP: DSL-Router (Gateway), damit wird das eigene Netz Teil des Netzes vom ISP
-Basisstationen gehen zu Masterswitch, der mit anderen Netzen weiter vernetzt ist
-Kernnetz: Dienste: Emailserver, DNS-Server, Kundendaten, verschiedene ISP sind untereinander gekoppelt)`
+    answer:"(IP4-Paket → in IP6-Paket verpacken)\n(Vom ISP: DSL-Router (Gateway), damit wird das eigene Netz Teil des Netzes vom ISP\nBasisstationen gehen zu Masterswitch, der mit anderen Netzen weiter vernetzt ist\nKernnetz: Dienste: Emailserver, DNS-Server, Kundendaten, verschiedene ISP sind untereinander gekoppelt)"
   },
   {
     id:"13.3.2",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Wie sieht die Vernetzung von ISPs untereinander aus?",
-    answer:`Direkt über Edge-Router (schnell, schlau)`
+    answer:"Direkt über Edge-Router (schnell, schlau)"
   },
   {
     id:"13.3.3",
     block:"13 Netzstrukturen und Informationssysteme",
     question:"Wie erhält ein Endkunde eines ISPs eine öffentlich sichtbare, routingfähige IPv4-Adresse?",
-    answer:`• Kapselung von privaten IPv4-Paketen in IPv6-Paketen innerhalb des Autonomen Systems des ISP (=ISP-Netz)
-• An der Grenze des Autonomen Systems erhält der Endkunde durch NAT / PAT am Edge Router temporär eine öffentlich (sichtbare) IPv4-
-Adresse (wird wieder umgepackt).
-(Dual Stack (früher) → Dual Stack Lite (getrickst, eingeschränkte Funktionalität))`
+    answer:"• Kapselung von privaten IPv4-Paketen in IPv6-Paketen innerhalb des Autonomen Systems des ISP (=ISP-Netz)\n• An der Grenze des Autonomen Systems erhält der Endkunde durch NAT / PAT am Edge Router temporär eine öffentlich (sichtbare) IPv4-\nAdresse (wird wieder umgepackt).\n(Dual Stack (früher) → Dual Stack Lite (getrickst, eingeschränkte Funktionalität))"
   },
 
-  // 15 WWW / NAT
+  // =========================
+  // 15 Internetworking für das WWW (Text)
+  // =========================
   {
     id:"15.1.1",
     block:"15 Internetworking für das WWW",
     question:"Welche Schritte sind vor dem eigentlichen Versand der Web-Anfrage notwendig?",
-    answer:`(ARP (Adress Resolution Protocol): IP-Adresse (DNS-Server oder Router) → MAC-Adresse DNS-Server)
-1) !DNS (Domain Name System): FQDN der URL → IP-Adresse des Webservers
-(Wenn der Webserver im selben LAN liegt, wird vor TCP…. ein ARP-Request verschickt:
-ARP: IP-Adresse(Webserver) → MAC-Adresse des Webservers)
-Namensauflösung über DNS + TCP-Verbindung
-2) !TCP: Verbindungsaufbau vom Client zum Webserver → Port-Nr, IP-Adresse des Webclients wird an Webserver übermittelt
-(hier: Webserver ohne Router im Intranet erreichbar)`
+    answer:"(ARP (Adress Resolution Protocol): IP-Adresse (DNS-Server oder Router) → MAC-Adresse DNS-Server)\n1) !DNS (Domain Name System): FQDN der URL → IP-Adresse des Webservers\n(Wenn der Webserver im selben LAN liegt, wird vor TCP…. ein ARP-Request verschickt:\nARP: IP-Adresse(Webserver) → MAC-Adresse des Webservers)\nNamensauflösung über DNS + TCP-Verbindung\n2) !TCP: Verbindungsaufbau vom Client zum Webserver → Port-Nr, IP-Adresse des Webclients wird an Webserver übermittelt\n(hier: Webserver ohne Router im Intranet erreichbar)"
   },
   {
     id:"15.2.1",
     block:"15 Internetworking für das WWW",
     question:"Wie muss der Webclient und der Web-Proxy konfiguriert werden?",
-    answer:`Webclient: z.B. manuelle Angabe des Web-Proxy (IP-Adresse und Portnummer 8080) in Einstellungen des Webclient
-Web-Proxy: IP-Adresse des NAT-Router (interne Seite) als "Standardgateway"`
+    answer:"Webclient: z.B. manuelle Angabe des Web-Proxy (IP-Adresse und Portnummer 8080) in Einstellungen des Webclient\nWeb-Proxy: IP-Adresse des NAT-Router (interne Seite) als \"Standardgateway\""
   },
   {
     id:"15.2.3",
     block:"15 Internetworking für das WWW",
     question:"Wie verändern sich die Adressen der Antwort des Webservers auf dem Rückweg (kurze Antwort ohne alle Adressen detailliert zu nennen)?",
-    answer:`Quell- und Zieladressen der Anfrage werden vertauscht.
-Bei HTTP entfällt die URL.`
+    answer:"Quell- und Zieladressen der Anfrage werden vertauscht.\nBei HTTP entfällt die URL."
   }
 ];
 
 // --------------------- Helpers ---------------------
 const byId = (id)=>document.getElementById(id);
 const norm = (s)=> (s||"").toLowerCase();
+
 function shuffle(arr){
   const a = arr.slice();
   for(let i=a.length-1;i>0;i--){
@@ -1054,6 +932,36 @@ function shuffle(arr){
   return a;
 }
 function unique(arr){ return [...new Set(arr)]; }
+
+// Vergleich (Musterlösung bleibt unberührt)
+function normalizeForCompare(s){
+  return (s || "")
+    .replace(/\r\n/g, "\n")
+    .trim()
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n");
+}
+function similarityPercent(user, solution){
+  const A = normalizeForCompare(user).toLowerCase().split(/\s+/).filter(Boolean);
+  const B = normalizeForCompare(solution).toLowerCase().split(/\s+/).filter(Boolean);
+  const setA = new Set(A);
+  const setB = new Set(B);
+  if(setA.size === 0 && setB.size === 0) return 100;
+  if(setA.size === 0 || setB.size === 0) return 0;
+  let inter = 0;
+  for(const t of setA) if(setB.has(t)) inter++;
+  const union = new Set([...setA, ...setB]).size;
+  return Math.max(0, Math.min(100, Math.round((inter / union) * 100)));
+}
+function exactMatch(user, solution){
+  return normalizeForCompare(user) === normalizeForCompare(solution);
+}
+function buildCompareResult(user, solution){
+  const pct = similarityPercent(user, solution);
+  const exact = exactMatch(user, solution);
+  const label = exact ? "EXAKT" : (pct >= 75 ? "hoch" : pct >= 45 ? "mittel" : "niedrig");
+  return { pct, exact, label };
+}
 
 // --------------------- Study rendering ---------------------
 let showAll = false;
@@ -1069,7 +977,6 @@ function populateSelect(sel, chapters){
     sel.appendChild(o);
   });
 }
-
 function filterQA({q, block}){
   let data = QA.slice();
   if(block && block!=="Alle") data = data.filter(x=>x.block===block);
@@ -1083,7 +990,6 @@ function filterQA({q, block}){
   }
   return data;
 }
-
 function sortQA(data, sort){
   if(sort==="id_desc") return data.slice().sort((a,b)=> (a.id<b.id?1:-1));
   if(sort==="rand") return shuffle(data);
@@ -1140,10 +1046,6 @@ Lösungen global: ${showAll ? "AN" : "AUS"}`;
     const btn = document.createElement("button");
     btn.className="btn";
     btn.textContent = "Lösung";
-    btn.addEventListener("click", ()=>{
-      ans.classList.toggle("show");
-    });
-
     right.appendChild(btn);
 
     top.appendChild(left);
@@ -1152,11 +1054,59 @@ Lösungen global: ${showAll ? "AN" : "AUS"}`;
     const ans = document.createElement("div");
     ans.className="answer";
     ans.textContent = item.answer;
-
     if(showAll) ans.classList.add("show");
+
+    btn.addEventListener("click", ()=>{
+      ans.classList.toggle("show");
+    });
 
     el.appendChild(top);
     el.appendChild(ans);
+
+    // --- User-Antwort + Abgleich (Lernmodus) ---
+    const uaLabel = document.createElement("div");
+    uaLabel.className = "meta";
+    uaLabel.style.marginTop = "10px";
+    uaLabel.textContent = "Deine Antwort (optional):";
+
+    const ua = document.createElement("textarea");
+    ua.placeholder = "Schreibe deine Antwort hier hinein...";
+
+    const compareRow = document.createElement("div");
+    compareRow.className = "compareRow";
+
+    const compareBtn = document.createElement("button");
+    compareBtn.className = "btn primary";
+    compareBtn.textContent = "Mit Musterlösung abgleichen";
+
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "btn";
+    clearBtn.textContent = "Eingabe löschen";
+
+    const resultPill = document.createElement("span");
+    resultPill.className = "pill";
+    resultPill.textContent = "Noch nicht abgeglichen";
+
+    compareBtn.addEventListener("click", ()=>{
+      const r = buildCompareResult(ua.value, item.answer);
+      resultPill.textContent = r.exact
+        ? "EXAKT gleich (nach Normalisierung)"
+        : `Übereinstimmung (grob): ${r.pct}% (${r.label})`;
+    });
+
+    clearBtn.addEventListener("click", ()=>{
+      ua.value = "";
+      resultPill.textContent = "Noch nicht abgeglichen";
+    });
+
+    compareRow.appendChild(compareBtn);
+    compareRow.appendChild(clearBtn);
+    compareRow.appendChild(resultPill);
+
+    el.appendChild(uaLabel);
+    el.appendChild(ua);
+    el.appendChild(compareRow);
+
     list.appendChild(el);
   });
 }
@@ -1193,6 +1143,9 @@ Falsch: ${exam.wrong}
 Lösung angezeigt: ${exam.revealed ? "ja" : "nein"}`;
 }
 
+const examUserAnswer = byId("examUserAnswer");
+const examCompareInfo = byId("examCompareInfo");
+
 function renderExam(){
   byId("examStats").textContent = examStatusText();
 
@@ -1201,6 +1154,8 @@ function renderExam(){
     byId("examQ").textContent = "Starte eine Prüfung, um zu beginnen.";
     byId("examAnswer").classList.remove("show");
     byId("examAnswer").textContent = "";
+    if(examUserAnswer) examUserAnswer.value = "";
+    if(examCompareInfo) examCompareInfo.textContent = "Noch nicht abgeglichen.";
     return;
   }
 
@@ -1209,6 +1164,17 @@ function renderExam(){
   byId("examQ").textContent = item.question;
   byId("examAnswer").textContent = item.answer;
   byId("examAnswer").classList.toggle("show", exam.revealed);
+
+  if(examCompareInfo){
+    if(!exam.revealed){
+      examCompareInfo.textContent = "Noch nicht abgeglichen.";
+    } else {
+      const r = buildCompareResult(examUserAnswer ? examUserAnswer.value : "", item.answer);
+      examCompareInfo.textContent = r.exact
+        ? "EXAKT gleich (nach Normalisierung)."
+        : `Übereinstimmung (grob): ${r.pct}% (${r.label}).`;
+    }
+  }
 }
 
 function startExam(){
@@ -1218,6 +1184,10 @@ function startExam(){
   exam.wrong = 0;
   exam.revealed = false;
   exam.running = exam.deck.length>0;
+
+  if(examUserAnswer) examUserAnswer.value = "";
+  if(examCompareInfo) examCompareInfo.textContent = "Noch nicht abgeglichen.";
+
   renderExam();
 }
 
@@ -1225,6 +1195,10 @@ function nextExam(){
   if(!exam.running) return;
   exam.idx++;
   exam.revealed = false;
+
+  if(examUserAnswer) examUserAnswer.value = "";
+  if(examCompareInfo) examCompareInfo.textContent = "Noch nicht abgeglichen.";
+
   if(exam.idx >= exam.deck.length){
     exam.running = false;
     byId("examStats").textContent =
@@ -1246,6 +1220,16 @@ function mark(correct){
 function toggleReveal(){
   if(!exam.running) return;
   exam.revealed = !exam.revealed;
+
+  if(exam.revealed && exam.running){
+    const item = exam.deck[exam.idx];
+    const r = buildCompareResult(examUserAnswer ? examUserAnswer.value : "", item.answer);
+    if(examCompareInfo){
+      examCompareInfo.textContent = r.exact
+        ? "EXAKT gleich (nach Normalisierung)."
+        : `Übereinstimmung (grob): ${r.pct}% (${r.label}).`;
+    }
+  }
   renderExam();
 }
 
@@ -1292,6 +1276,8 @@ function setMode(mode){
   byId("startExam").addEventListener("click", startExam);
   byId("resetExam").addEventListener("click", ()=>{
     exam = {running:false, deck:[], idx:0, correct:0, wrong:0, revealed:false};
+    if(examUserAnswer) examUserAnswer.value = "";
+    if(examCompareInfo) examCompareInfo.textContent = "Noch nicht abgeglichen.";
     renderExam();
   });
 
