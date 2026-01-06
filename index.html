@@ -400,9 +400,9 @@
               </div>
 
               <div class="actions" style="margin-top:10px;">
-                <button class="btn" id="examShow">Lösung anzeigen (Space)</button>
-                <button class="btn ok" id="examYes">Richtig (J)</button>
-                <button class="btn bad" id="examNo">Falsch (N)</button>
+                <button class="btn" id="examShow">Lösung anzeigen </button>
+                <button class="btn ok" id="examYes">Richtig </button>
+                <button class="btn bad" id="examNo">Falsch </button>
                 <button class="btn primary" id="examNext">Nächste Frage</button>
               </div>
 
@@ -1286,15 +1286,17 @@ function setMode(mode){
   byId("examNo").addEventListener("click", ()=> mark(false));
   byId("examNext").addEventListener("click", nextExam);
 
-  // Keyboard shortcuts in exam mode
-  document.addEventListener("keydown", (e)=>{
-    const examVisible = byId("examView").style.display !== "none";
-    if(!examVisible) return;
-
-    if(e.code==="Space"){ e.preventDefault(); toggleReveal(); }
-    if(e.key==="j" || e.key==="J"){ mark(true); }
-    if(e.key==="n" || e.key==="N"){ mark(false); }
-  });
+  // Keyboard shortcuts in exam mode: DISABLED — require button clicks only
+  // (Previously Space = show, J = correct, N = wrong)
+  // Keeping this commented makes button clicking mandatory for all clients.
+  // document.addEventListener("keydown", (e)=>{
+  //   const examVisible = byId("examView").style.display !== "none";
+  //   if(!examVisible) return;
+  //
+  //   if(e.code==="Space"){ e.preventDefault(); toggleReveal(); }
+  //   if(e.key==="j" || e.key==="J"){ mark(true); }
+  //   if(e.key==="n" || e.key==="N"){ mark(false); }
+  // });
 
   renderStudy();
   renderExam();
